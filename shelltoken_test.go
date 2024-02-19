@@ -1,8 +1,9 @@
-package main
+package shelltoken_test
 
 import (
 	"testing"
 
+	"github.com/sni/shelltoken"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +39,7 @@ func TestShellToken(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := Parse(tst.in)
+		env, argv, err := shelltoken.Parse(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
@@ -68,7 +69,7 @@ func TestShellEnv(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := Parse(tst.in)
+		env, argv, err := shelltoken.Parse(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.arg, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Equalf(t, tst.env, env, "Tokenize env: %v -> %v", tst.in, env)
@@ -84,7 +85,7 @@ func TestShellErrors(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := Parse(tst.in)
+		env, argv, err := shelltoken.Parse(tst.in)
 		require.Errorf(t, err, "expected error for %s: %s", tst.in, tst.err)
 		assert.Contains(t, err.Error(), tst.err)
 		assert.Nil(t, argv, "argv is nil")

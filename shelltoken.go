@@ -1,4 +1,9 @@
-package main
+// Package shelltoken implements a command line parser.
+//
+// The shelltoken package splits a command line into token by whitespace
+// characters while honoring single and double quotes.
+// Backslashes and escaped quotes are supported as well.
+package shelltoken
 
 import (
 	"errors"
@@ -8,6 +13,13 @@ import (
 var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 
 // Parse parses command into list of envs and argv.
+// A successful parse will return the env list with
+// parsed environment variable definitions along with
+// the argv list. The argv list will always contain at
+// least one element (which can be empty).
+// The argv[0] contains the command and all following elements
+// are the arguments.
+// An unsuccessful parse will return an error.
 func Parse(str string) (env, argv []string, err error) {
 	var token []rune
 
