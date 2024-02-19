@@ -15,4 +15,5 @@ jobs:
       with:
         go-version: ${{ matrix.go-version }}
     - run: make clean
+    - run: make tools
     - run: make citest
