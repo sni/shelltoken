@@ -24,6 +24,8 @@ tools: | versioncheck vendor
 	done
 	$(GO) mod tidy
 	( cd buildtools && $(GO) mod tidy )
+	# pin these dependencies
+	( cd buildtools && $(GO) get github.com/golangci/golangci-lint@latest )
 	$(GO) mod vendor
 
 updatedeps: versioncheck
@@ -31,14 +33,12 @@ updatedeps: versioncheck
 	$(MAKE) tools
 	$(GO) mod download
 	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
-		$(GO) get $$DEP; \
+		( cd buildtools && $(GO) get $$DEP ) ; \
 	done
-	$(GO) get -u ./buildtools/
+	( cd buildtools && $(GO) get -u )
 	$(GO) mod download
 	$(GO) get -u
 	$(GO) get -t -u
-	# pin these dependencies
-	$(GO) get github.com/golangci/golangci-lint@latest
 	$(MAKE) cleandeps
 
 cleandeps:
