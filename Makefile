@@ -20,9 +20,10 @@ all: build
 tools: | versioncheck vendor
 	$(GO) mod download
 	set -e; for DEP in $(shell grep "_ " buildtools/tools.go | awk '{ print $$2 }'); do \
-		$(GO) install $$DEP; \
+		( cd buildtools && $(GO) install $$DEP ) ; \
 	done
 	$(GO) mod tidy
+	( cd buildtools && $(GO) mod tidy )
 	$(GO) mod vendor
 
 updatedeps: versioncheck
