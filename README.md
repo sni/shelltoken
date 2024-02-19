@@ -1,6 +1,6 @@
 # shelltoken
 
-[![CICD Pipeline](https://github.com/sni/shelltoken/actions/workflows/cicd.yml/badge.svg?branch=main)](https://github.com/sni/shelltoken/actions/workflows/cicd.yml)
+[![CICD Pipeline](https://github.com/sni/shelltoken/actions/workflows/citest.yml/badge.svg)](https://github.com/sni/shelltoken/actions/workflows/citest.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/sni/shelltoken)](https://goreportcard.com/report/github.com/sni/shelltoken)
 [![License](https://img.shields.io/github/license/sni/shelltoken)](https://github.com/sni/shelltoken/blob/main/LICENSE)
 
