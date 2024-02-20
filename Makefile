@@ -43,6 +43,7 @@ updatedeps: versioncheck
 
 cleandeps:
 	$(GO) mod tidy
+	( cd buildtools && $(GO) mod tidy )
 
 vendor:
 	$(GO) mod download
