@@ -11,12 +11,25 @@ Go library to split a command line into env, command and arguments.
 
     %> go get github.com/sni/shelltoken
 
+## Documentation
+
+The documenation can be found on [pkg.go.dev](https://pkg.go.dev/github.com/sni/shelltoken).
+
 ## Example
 
-    package main
-
     import (
+        "fmt"
+
         "github.com/sni/shelltoken"
     )
 
-    env, argv, err := shelltoken.Parse("./command line with 'spaces' and back\slashes")
+    func Example() {
+        env, argv, err := shelltoken.Parse("PATH=/bin ls -l")
+        if err != nil {
+            panic("parse error: " + err.Error())
+        }
+
+        fmt.Println(env, argv)
+        // Output:
+        // [PATH=/bin] [ls -l]
+    }
