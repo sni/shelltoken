@@ -7,7 +7,12 @@ import (
 )
 
 func Example() {
-	fmt.Println(shelltoken.Parse("PATH=/bin ls -l"))
+	env, argv, err := shelltoken.Parse("PATH=/bin ls -l")
+	if err != nil {
+		panic("parse error: " + err.Error())
+	}
+
+	fmt.Println(env, argv)
 	// Output:
-	// [PATH=/bin] [ls -l] <nil>
+	// [PATH=/bin] [ls -l]
 }
