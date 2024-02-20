@@ -17,19 +17,24 @@ The documenation can be found on [pkg.go.dev](https://pkg.go.dev/github.com/sni/
 
 ## Example
 
-    import (
-        "fmt"
+```golang
+package main
 
-        "github.com/sni/shelltoken"
-    )
+import (
+	"fmt"
 
-    func Example() {
-        env, argv, err := shelltoken.Parse("PATH=/bin ls -l")
-        if err != nil {
-            panic("parse error: " + err.Error())
-        }
+	"github.com/sni/shelltoken"
+)
 
-        fmt.Println(env, argv)
-        // Output:
-        // [PATH=/bin] [ls -l]
-    }
+func Example() {
+	env, argv, err := shelltoken.Parse("PATH=/bin ls -l")
+	if err != nil {
+		panic("parse error: " + err.Error())
+	}
+
+	fmt.Printf("env:  %#v\nargv: %#v\n", env, argv)
+	// Output:
+	// env:  []string{"PATH=/bin"}
+	// argv: []string{"ls", "-l"}
+}
+```

@@ -12,7 +12,8 @@ func Example() {
 		panic("parse error: " + err.Error())
 	}
 
-	fmt.Println(env, argv)
+	fmt.Printf("env:  %#v\nargv: %#v\n", env, argv)
 	// Output:
-	// [PATH=/bin] [ls -l]
+	// env:  []string{"PATH=/bin"}
+	// argv: []string{"ls", "-l"}
 }
