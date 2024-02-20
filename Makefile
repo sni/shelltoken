@@ -77,6 +77,7 @@ citest: vendor
 	# Run other subtests
 	#
 	$(MAKE) golangci
+	-$(MAKE) govulncheck
 	$(MAKE) fmt
 	#
 	# Normal test cases
@@ -131,7 +132,7 @@ versioncheck:
 		exit 1; \
 	}
 
-golangci:
+golangci: tools
 	#
 	# golangci combines a few static code analyzer
 	# See https://github.com/golangci/golangci-lint
