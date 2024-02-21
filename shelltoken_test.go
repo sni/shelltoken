@@ -82,6 +82,7 @@ func TestShellErrors(t *testing.T) {
 		err string
 	}{
 		{"test 'arg1 arg2", "unbalanced quotes"},
+		{`test "arg1 arg2`, "unbalanced quotes"},
 	}
 
 	for _, tst := range tests {
@@ -90,5 +91,28 @@ func TestShellErrors(t *testing.T) {
 		assert.Contains(t, err.Error(), tst.err)
 		assert.Nil(t, argv, "argv is nil")
 		assert.Nil(t, env, "argv is nil")
+	}
+}
+
+func TestShellCharacters(t *testing.T) {
+	tests := []struct {
+		in    string
+		shell bool
+	}{
+		{"test 'arg1 arg2'", false},
+		{"test '$(ls)'", false},
+		{`test "$(ls)"`, true},
+		{"test `ls`", true},
+		{"test '`ls`'", false},
+		{`test "test"$(ls)`, true},
+		{`test "test"$(ls)'test'`, true},
+		{"test 2>&1", true},
+		{"ENV='test' test 2>&1", true},
+	}
+
+	for _, tst := range tests {
+		_, _, shell, err := shelltoken.Parse(tst.in, false)
+		require.NoErrorf(t, err, "expected no error for %s", tst.in)
+		assert.Equalf(t, tst.shell, shell, "shell parser worked: %s -> %v", tst.in, tst.shell)
 	}
 }
