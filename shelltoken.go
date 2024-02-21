@@ -19,21 +19,40 @@ var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 // least one element (which can be empty).
 // The argv[0] contains the command and all following elements
 // are the arguments.
+// keepBackslashes controls wether backslashes are kept or parsed.
+// - true: keep them (ex. useful for windows commands)
+// - false: (default) parse backslashes like the sh/bash shell
+// hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
 // An unsuccessful parse will return an error.
-func Parse(str string) (env, argv []string, err error) {
+func Parse(str string, keepBackslashes bool) (env, argv []string, hasShellCode bool, err error) {
 	var token []rune
 
 	separator := " \t\n\r"
-	inQuotes := false
-	inDbl := false
+	inSingleQuotes := false
+	inDoubleQuotes := false
 	escaped := false
 	str = strings.TrimSpace(str)
 
 	addToken := func(char rune) {
+		// reset escaped flag
 		escaped = false
 
 		if token == nil {
 			token = make([]rune, 0)
+		}
+
+		switch {
+		case inSingleQuotes:
+		case inDoubleQuotes:
+			switch char {
+			case '$', '`':
+				hasShellCode = true
+			}
+		default:
+			switch char {
+			case '$', '`', '!', '&', '*', '(', ')', '~', '[', ']', '\\', '|', '{', '}', ';', '<', '>', '?':
+				hasShellCode = true
+			}
 		}
 
 		token = append(token, char)
@@ -45,10 +64,10 @@ func Parse(str string) (env, argv []string, err error) {
 			escaped = true
 
 			switch {
-			case inQuotes:
+			case keepBackslashes, inSingleQuotes:
 				// backslashes are kept in single quotes
 				addToken(char)
-			case inDbl:
+			case inDoubleQuotes:
 				// or in double quotes except...
 				if len(str) > pos {
 					switch str[pos+1] {
@@ -67,8 +86,8 @@ func Parse(str string) (env, argv []string, err error) {
 				token = make([]rune, 0)
 			}
 
-			if !inQuotes {
-				inDbl = !inDbl
+			if !inSingleQuotes {
+				inDoubleQuotes = !inDoubleQuotes
 			} else {
 				addToken(char)
 			}
@@ -77,14 +96,14 @@ func Parse(str string) (env, argv []string, err error) {
 				token = make([]rune, 0)
 			}
 
-			if !inDbl {
-				inQuotes = !inQuotes
+			if !inDoubleQuotes {
+				inSingleQuotes = !inSingleQuotes
 			} else {
 				addToken(char)
 			}
 		case !escaped && strings.ContainsRune(separator, char):
 			switch {
-			case inQuotes, inDbl:
+			case inSingleQuotes, inDoubleQuotes:
 				addToken(char)
 			case token != nil:
 				argv = append(argv, string(token))
@@ -104,15 +123,15 @@ func Parse(str string) (env, argv []string, err error) {
 	}
 
 	switch {
-	case inQuotes:
-		return nil, nil, ErrUnbalancedQuotes
-	case inDbl:
-		return nil, nil, ErrUnbalancedQuotes
+	case inSingleQuotes:
+		return nil, nil, false, ErrUnbalancedQuotes
+	case inDoubleQuotes:
+		return nil, nil, false, ErrUnbalancedQuotes
 	}
 
 	env, argv = extractEnvFromArgv(argv)
 
-	return env, argv, nil
+	return env, argv, hasShellCode, nil
 }
 
 func extractEnvFromArgv(argv []string) (envs, args []string) {

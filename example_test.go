@@ -7,7 +7,7 @@ import (
 )
 
 func Example() {
-	env, argv, err := shelltoken.Parse("PATH=/bin ls -l")
+	env, argv, _, err := shelltoken.Parse("PATH=/bin ls -l", false)
 	if err != nil {
 		panic("parse error: " + err.Error())
 	}
