@@ -7,8 +7,23 @@ package shelltoken
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 )
+
+type ShellCharactersFoundError struct {
+	pos int
+}
+
+func (e *ShellCharactersFoundError) Error() string {
+	return fmt.Sprintf("shell character at position %d", e.pos)
+}
+
+type UnbalancedQuotesError struct{}
+
+func (e *UnbalancedQuotesError) Error() string {
+	return "unbalanced quotes"
+}
 
 var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 
@@ -20,7 +35,7 @@ const WHITESPACE = " \t\n\r"
 // - keep backslashes: false.
 // - keep quotes: false.
 // - keep separator: false.
-func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
+func ParseLinux(str string) (env, argv []string, err error) {
 	return Parse(strings.TrimSpace(str), WHITESPACE, false, false, false)
 }
 
@@ -30,7 +45,7 @@ func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
 // - keep backslashes: true.
 // - keep quotes: false.
 // - keep separator: false.
-func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error) {
+func ParseWindows(str string) (env, argv []string, err error) {
 	return Parse(strings.TrimSpace(str), WHITESPACE, true, false, false)
 }
 
@@ -45,10 +60,10 @@ func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error)
 // - true: keep them (ex. useful for windows commands)
 // - false: (default) parse backslashes like the sh/bash shell
 // keepSep controls wether separators are kept or removed.
-// keepQuote controls wether quotes are kept or removed.
-// hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
-// An unsuccessful parse will return an error.
-func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv []string, hasShellCode bool, err error) {
+// keepQuote controls wether quotes are kept or removed
+// An unsuccessful parse will return an error. The error will be either
+// ErrUnbalancedQuotes or ShellCharactersFoundError.
+func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv []string, err error) {
 	state := &parseState{
 		hasToken:       false,
 		escaped:        false,
@@ -59,6 +74,10 @@ func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv [
 	}
 
 	for pos, char := range str {
+		if state.hasShellCode {
+			return nil, nil, &ShellCharactersFoundError{pos: pos}
+		}
+
 		switch {
 		case !state.escaped && char == '\\':
 			state.escaped = true
@@ -137,14 +156,14 @@ func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv [
 
 	switch {
 	case state.inSingleQuotes:
-		return nil, nil, false, ErrUnbalancedQuotes
+		return nil, nil, ErrUnbalancedQuotes
 	case state.inDoubleQuotes:
-		return nil, nil, false, ErrUnbalancedQuotes
+		return nil, nil, ErrUnbalancedQuotes
 	}
 
 	env, argv = extractEnvFromArgv(argv)
 
-	return env, argv, state.hasShellCode, nil
+	return env, argv, nil
 }
 
 type parseState struct {
@@ -169,7 +188,7 @@ func (p *parseState) addToken(char rune) {
 		}
 	default:
 		switch char {
-		case '$', '`', '!', '&', '*', '(', ')', '~', '[', ']', '\\', '|', '{', '}', ';', '<', '>', '?':
+		case '$', '`', '!', '&', '*', '(', ')', '~', '[', ']', '|', '{', '}', ';', '<', '>', '?':
 			p.hasShellCode = true
 		}
 	}
