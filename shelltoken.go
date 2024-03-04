@@ -23,7 +23,7 @@ func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
 	return Parse(str, separator, false, false)
 }
 
-// ParseWindows splits a string the way windows would do
+// ParseWindows splits a string the way windows would do.
 // It uses
 // - separator: " \t\n\r".
 // - keep backslashes: true.
@@ -48,50 +48,27 @@ func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error)
 // hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
 // An unsuccessful parse will return an error.
 func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, hasShellCode bool, err error) {
-	inSingleQuotes := false
-	inDoubleQuotes := false
-	escaped := false
-	str = strings.TrimSpace(str)
-
-	var token strings.Builder
-
-	token.Reset()
-
-	hasToken := false
-
-	addToken := func(char rune) {
-		// reset escaped flag
-		escaped = false
-
-		switch {
-		case inSingleQuotes:
-		case inDoubleQuotes:
-			switch char {
-			case '$', '`':
-				hasShellCode = true
-			}
-		default:
-			switch char {
-			case '$', '`', '!', '&', '*', '(', ')', '~', '[', ']', '\\', '|', '{', '}', ';', '<', '>', '?':
-				hasShellCode = true
-			}
-		}
-
-		hasToken = true
-
-		token.WriteRune(char)
+	state := &parseState{
+		hasToken:       false,
+		escaped:        false,
+		hasShellCode:   false,
+		inSingleQuotes: false,
+		inDoubleQuotes: false,
+		token:          strings.Builder{},
 	}
+
+	str = strings.TrimSpace(str)
 
 	for pos, char := range str {
 		switch {
-		case !escaped && char == '\\':
-			escaped = true
+		case !state.escaped && char == '\\':
+			state.escaped = true
 
 			switch {
-			case keepBackSlash, inSingleQuotes:
+			case keepBackSlash, state.inSingleQuotes:
 				// backslashes are kept in single quotes
-				addToken(char)
-			case inDoubleQuotes:
+				state.addToken(char)
+			case state.inDoubleQuotes:
 				// or in double quotes except...
 				if len(str) > pos {
 					switch str[pos+1] {
@@ -100,69 +77,101 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 					// or a backslash
 					case '\\':
 					default:
-						addToken(char)
+						state.addToken(char)
 					}
 				}
 			}
 
-		case !escaped && char == '"':
-			hasToken = true
+		case !state.escaped && char == '"':
+			state.hasToken = true
 
-			if !inSingleQuotes {
-				inDoubleQuotes = !inDoubleQuotes
+			if !state.inSingleQuotes {
+				state.inDoubleQuotes = !state.inDoubleQuotes
 			} else {
-				addToken(char)
+				state.addToken(char)
 			}
-		case !escaped && char == '\'':
-			hasToken = true
+		case !state.escaped && char == '\'':
+			state.hasToken = true
 
-			if !inDoubleQuotes {
-				inSingleQuotes = !inSingleQuotes
+			if !state.inDoubleQuotes {
+				state.inSingleQuotes = !state.inSingleQuotes
 			} else {
-				addToken(char)
+				state.addToken(char)
 			}
-		case !escaped && strings.ContainsRune(sep, char):
+		case !state.escaped && strings.ContainsRune(sep, char):
 			switch {
-			case inSingleQuotes, inDoubleQuotes:
-				addToken(char)
+			case state.inSingleQuotes, state.inDoubleQuotes:
+				state.addToken(char)
 			case keepSep:
-				if hasToken {
-					argv = append(argv, token.String())
-					token.Reset()
+				if state.hasToken {
+					argv = append(argv, state.token.String())
+					state.token.Reset()
 
-					hasToken = false
+					state.hasToken = false
 				}
 
 				argv = append(argv, string(char))
-			case hasToken:
-				argv = append(argv, token.String())
-				token.Reset()
+			case state.hasToken:
+				argv = append(argv, state.token.String())
+				state.token.Reset()
 
-				hasToken = false
+				state.hasToken = false
 			}
 		default:
-			addToken(char)
+			state.addToken(char)
 		}
 	}
 
-	if !hasToken {
+	if !state.hasToken {
 		// append empty token if no token found so far
 		argv = append(argv, "")
 	} else {
 		// append last token
-		argv = append(argv, token.String())
+		argv = append(argv, state.token.String())
 	}
 
 	switch {
-	case inSingleQuotes:
+	case state.inSingleQuotes:
 		return nil, nil, false, ErrUnbalancedQuotes
-	case inDoubleQuotes:
+	case state.inDoubleQuotes:
 		return nil, nil, false, ErrUnbalancedQuotes
 	}
 
 	env, argv = extractEnvFromArgv(argv)
 
-	return env, argv, hasShellCode, nil
+	return env, argv, state.hasShellCode, nil
+}
+
+type parseState struct {
+	hasToken       bool
+	escaped        bool
+	hasShellCode   bool
+	inSingleQuotes bool
+	inDoubleQuotes bool
+	token          strings.Builder
+}
+
+func (p *parseState) addToken(char rune) {
+	// reset escaped flag
+	p.escaped = false
+
+	switch {
+	case p.inSingleQuotes:
+	case p.inDoubleQuotes:
+		switch char {
+		case '$', '`':
+			p.hasShellCode = true
+		}
+	default:
+		switch char {
+		case '$', '`', '!', '&', '*', '(', ')', '~', '[', ']', '\\', '|', '{', '}', ';', '<', '>', '?':
+			p.hasShellCode = true
+		}
+	}
+
+	p.hasToken = true
+
+	p.token.WriteRune(char)
 }
 
 func extractEnvFromArgv(argv []string) (envs, args []string) {
