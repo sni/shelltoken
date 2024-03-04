@@ -48,20 +48,20 @@ func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error)
 // hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
 // An unsuccessful parse will return an error.
 func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, hasShellCode bool, err error) {
-	var token []rune
-
 	inSingleQuotes := false
 	inDoubleQuotes := false
 	escaped := false
 	str = strings.TrimSpace(str)
 
+	var token strings.Builder
+
+	token.Reset()
+
+	hasToken := false
+
 	addToken := func(char rune) {
 		// reset escaped flag
 		escaped = false
-
-		if token == nil {
-			token = make([]rune, 0)
-		}
 
 		switch {
 		case inSingleQuotes:
@@ -77,7 +77,9 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 			}
 		}
 
-		token = append(token, char)
+		hasToken = true
+
+		token.WriteRune(char)
 	}
 
 	for pos, char := range str {
@@ -104,9 +106,7 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 			}
 
 		case !escaped && char == '"':
-			if token == nil {
-				token = make([]rune, 0)
-			}
+			hasToken = true
 
 			if !inSingleQuotes {
 				inDoubleQuotes = !inDoubleQuotes
@@ -114,9 +114,7 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 				addToken(char)
 			}
 		case !escaped && char == '\'':
-			if token == nil {
-				token = make([]rune, 0)
-			}
+			hasToken = true
 
 			if !inDoubleQuotes {
 				inSingleQuotes = !inSingleQuotes
@@ -128,22 +126,31 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 			case inSingleQuotes, inDoubleQuotes:
 				addToken(char)
 			case keepSep:
-				addToken(char)
-			case token != nil:
-				argv = append(argv, string(token))
-				token = nil
+				if hasToken {
+					argv = append(argv, token.String())
+					token.Reset()
+
+					hasToken = false
+				}
+
+				argv = append(argv, string(char))
+			case hasToken:
+				argv = append(argv, token.String())
+				token.Reset()
+
+				hasToken = false
 			}
 		default:
 			addToken(char)
 		}
 	}
 
-	if token == nil {
+	if !hasToken {
 		// append empty token if no token found so far
 		argv = append(argv, "")
 	} else {
 		// append last token
-		argv = append(argv, string(token))
+		argv = append(argv, token.String())
 	}
 
 	switch {
