@@ -35,8 +35,9 @@ const WHITESPACE = " \t\n\r"
 // - keep backslashes: false.
 // - keep quotes: false.
 // - keep separator: false.
+// returns error if shell characters were found.
 func ParseLinux(str string) (env, argv []string, err error) {
-	return Parse(strings.TrimSpace(str), WHITESPACE, false, false, false)
+	return Parse(strings.TrimSpace(str), WHITESPACE, false, false, false, false)
 }
 
 // ParseWindows splits a string the way windows would do.
@@ -45,8 +46,9 @@ func ParseLinux(str string) (env, argv []string, err error) {
 // - keep backslashes: true.
 // - keep quotes: false.
 // - keep separator: false.
+// returns error if shell characters were found.
 func ParseWindows(str string) (env, argv []string, err error) {
-	return Parse(strings.TrimSpace(str), WHITESPACE, true, false, false)
+	return Parse(strings.TrimSpace(str), WHITESPACE, true, false, false, false)
 }
 
 // Parse parses command into list of envs and argv.
@@ -61,9 +63,10 @@ func ParseWindows(str string) (env, argv []string, err error) {
 // - false: (default) parse backslashes like the sh/bash shell
 // keepSep controls wether separators are kept or removed.
 // keepQuote controls wether quotes are kept or removed
+// ignoreShellChars controls wether shell characters lead to a ShellCharactersFoundError
 // An unsuccessful parse will return an error. The error will be either
 // ErrUnbalancedQuotes or ShellCharactersFoundError.
-func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv []string, err error) {
+func Parse(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars bool) (env, argv []string, err error) {
 	state := &parseState{
 		hasToken:       false,
 		escaped:        false,
@@ -74,7 +77,7 @@ func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv [
 	}
 
 	for pos, char := range str {
-		if state.hasShellCode {
+		if state.hasShellCode && !ignoreShellChars {
 			return nil, nil, &ShellCharactersFoundError{pos: pos}
 		}
 

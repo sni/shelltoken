@@ -121,6 +121,23 @@ func TestParseLinuxShellCharacters(t *testing.T) {
 	}
 }
 
+func TestParseLinuxIgnoreShell(t *testing.T) {
+	tests := []struct {
+		in  string
+		env []string
+		arg []string
+	}{
+		{`PATH=test:$PATH LD_LIB=... $(pwd)/test`, []string{"PATH=test:$PATH", "LD_LIB=..."}, []string{"$(pwd)/test"}},
+	}
+
+	for _, tst := range tests {
+		env, argv, err := shelltoken.Parse(tst.in, shelltoken.WHITESPACE, false, false, false, true)
+		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
+		assert.Equalf(t, tst.arg, argv, "Tokenize: %v -> %v", tst.in, argv)
+		assert.Equalf(t, tst.env, env, "Tokenize env: %v -> %v", tst.in, env)
+	}
+}
+
 func TestParseWindows(t *testing.T) {
 	tests := []struct {
 		in  string
@@ -150,7 +167,7 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.Parse(tst.in, shelltoken.WHITESPACE, true, true, true)
+		env, argv, err := shelltoken.Parse(tst.in, shelltoken.WHITESPACE, true, true, true, true)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
@@ -166,7 +183,7 @@ func TestParseOther(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.Parse(tst.in, `;|`, true, true, true)
+		env, argv, err := shelltoken.Parse(tst.in, `;|`, true, true, true, true)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
