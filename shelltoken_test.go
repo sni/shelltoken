@@ -138,7 +138,7 @@ func TestParse(t *testing.T) {
 		res []string
 	}{
 		{"", []string{""}},
-		{" a", []string{"a"}},
+		{" a", []string{" ", "a"}},
 		{"'test'", []string{"'test'"}},
 		{`'\test'`, []string{`'\test'`}},
 		{`'te' 'st'`, []string{`'te'`, ` `, `'st'`}},

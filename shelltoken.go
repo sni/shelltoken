@@ -21,7 +21,7 @@ const WHITESPACE = " \t\n\r"
 // - keep quotes: false.
 // - keep separator: false.
 func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
-	return Parse(str, WHITESPACE, false, false, false)
+	return Parse(strings.TrimSpace(str), WHITESPACE, false, false, false)
 }
 
 // ParseWindows splits a string the way windows would do.
@@ -31,7 +31,7 @@ func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
 // - keep quotes: false.
 // - keep separator: false.
 func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error) {
-	return Parse(str, WHITESPACE, true, false, false)
+	return Parse(strings.TrimSpace(str), WHITESPACE, true, false, false)
 }
 
 // Parse parses command into list of envs and argv.
@@ -57,8 +57,6 @@ func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv [
 		inDoubleQuotes: false,
 		token:          strings.Builder{},
 	}
-
-	str = strings.TrimSpace(str)
 
 	for pos, char := range str {
 		switch {
