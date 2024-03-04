@@ -25,9 +25,15 @@ var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 // hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
 // An unsuccessful parse will return an error.
 func Parse(str string, keepBackslashes bool) (env, argv []string, hasShellCode bool, err error) {
+	separator := " \t\n\r"
+
+	return ParseSeparator(str, separator, keepBackslashes)
+}
+
+// ParseSeparator works like Parse but uses a custom separator.
+func ParseSeparator(str, separator string, keepBackslashes bool) (env, argv []string, hasShellCode bool, err error) {
 	var token []rune
 
-	separator := " \t\n\r"
 	inSingleQuotes := false
 	inDoubleQuotes := false
 	escaped := false
@@ -135,8 +141,8 @@ func Parse(str string, keepBackslashes bool) (env, argv []string, hasShellCode b
 }
 
 func extractEnvFromArgv(argv []string) (envs, args []string) {
-	for i, s := range argv {
-		if !strings.Contains(s, "=") {
+	for i := range argv {
+		if !strings.Contains(argv[i], "=") {
 			return argv[0:i], argv[i:]
 		}
 	}

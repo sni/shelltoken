@@ -116,3 +116,21 @@ func TestShellCharacters(t *testing.T) {
 		assert.Equalf(t, tst.shell, shell, "shell parser worked: %s -> %v", tst.in, tst.shell)
 	}
 }
+
+func BenchmarkParseShort(b *testing.B) {
+	tst := `"test" some more ' test test test 123'`
+	for n := 0; n < b.N; n++ {
+		shelltoken.Parse(tst, false)
+	}
+}
+
+func BenchmarkParseLong(b *testing.B) {
+	tst := `"test" some more ' test test test 123'`
+	for x := 0; x < 10; x++ {
+		tst += tst
+	}
+
+	for n := 0; n < b.N; n++ {
+		shelltoken.Parse(tst, false)
+	}
+}

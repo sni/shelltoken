@@ -18,9 +18,9 @@ issues:
   max-same-issues: 0
   exclude-use-default: true
   exclude:
-    - "Function 'Parse' has too many statements"
-    - "cognitive complexity .* of func `Parse` is high"
-    - "calculated cyclomatic complexity for function Parse is .*, max is"
+    - "Function 'ParseSeparator' has too many statements"
+    - "cognitive complexity .* of func `ParseSeparator` is high"
+    - "calculated cyclomatic complexity for function ParseSeparator is .*, max is"
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go
@@ -28,3 +28,4 @@ issues:
         - dupword
         - funlen
         - lll
+        - errcheck
