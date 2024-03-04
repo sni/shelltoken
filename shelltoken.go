@@ -6,7 +6,6 @@
 package shelltoken
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 )
@@ -24,8 +23,6 @@ type UnbalancedQuotesError struct{}
 func (e *UnbalancedQuotesError) Error() string {
 	return "unbalanced quotes"
 }
-
-var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 
 const WHITESPACE = " \t\n\r"
 
@@ -104,7 +101,7 @@ func ExtractEnvFromArgv(argv []string) (envs, args []string) {
 // keepQuote controls wether quotes are kept or removed
 // ignoreShellChars controls wether shell characters lead to a ShellCharactersFoundError
 // An unsuccessful parse will return an error. The error will be either
-// ErrUnbalancedQuotes or ShellCharactersFoundError.
+// UnbalancedQuotesError or ShellCharactersFoundError.
 func SplitQuotes(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars bool) (argv []string, err error) {
 	argv = []string{}
 	state := &parseState{
@@ -196,7 +193,7 @@ func SplitQuotes(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShell
 
 	switch {
 	case state.inSingleQuotes, state.inDoubleQuotes:
-		return nil, ErrUnbalancedQuotes
+		return nil, &UnbalancedQuotesError{}
 	default:
 		return argv, nil
 	}
