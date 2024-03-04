@@ -35,7 +35,6 @@ func TestParseLinux(t *testing.T) {
 		{`'\\\\ a'`, []string{`\\\\ a`}},
 		{"/bin/sh -c 'echo a b c '", []string{"/bin/sh", "-c", "echo a b c "}},
 		{"cmd.exe /c '`foo`'", []string{"cmd.exe", "/c", "`foo`"}},
-		// {`c:\"Program Files"\/crap\bs.exe`, []string{`c:\Program Files\/crap\bs.exe`}},
 	}
 
 	for _, tst := range tests {
@@ -114,5 +113,21 @@ func TestParseLinuxShellCharacters(t *testing.T) {
 		_, _, shell, err := shelltoken.ParseLinux(tst.in)
 		require.NoErrorf(t, err, "expected no error for %s", tst.in)
 		assert.Equalf(t, tst.shell, shell, "shell parser worked: %s -> %v", tst.in, tst.shell)
+	}
+}
+
+func TestParseWindows(t *testing.T) {
+	tests := []struct {
+		in  string
+		res []string
+	}{
+		{`c:\"Program Files"\/crap\bs.exe`, []string{`c:\Program Files\/crap\bs.exe`}},
+	}
+
+	for _, tst := range tests {
+		env, argv, _, err := shelltoken.ParseWindows(tst.in)
+		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
+		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
+		assert.Emptyf(t, env, "no env")
 	}
 }
