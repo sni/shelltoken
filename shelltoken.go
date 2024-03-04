@@ -12,26 +12,26 @@ import (
 
 var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 
+const WHITESPACE = " \t\n\r"
+
 // ParseLinux splits a string the way the linux /bin/sh would do.
 // It uses
 // - separator: " \t\n\r".
 // - keep backslashes: false.
+// - keep quotes: false.
 // - keep separator: false.
 func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
-	separator := " \t\n\r"
-
-	return Parse(str, separator, false, false)
+	return Parse(str, WHITESPACE, false, false, false)
 }
 
 // ParseWindows splits a string the way windows would do.
 // It uses
 // - separator: " \t\n\r".
 // - keep backslashes: true.
+// - keep quotes: false.
 // - keep separator: false.
 func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error) {
-	separator := " \t\n\r"
-
-	return Parse(str, separator, true, false)
+	return Parse(str, WHITESPACE, true, false, false)
 }
 
 // Parse parses command into list of envs and argv.
@@ -45,9 +45,10 @@ func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error)
 // - true: keep them (ex. useful for windows commands)
 // - false: (default) parse backslashes like the sh/bash shell
 // keepSep controls wether separators are kept or removed.
+// keepQuote controls wether quotes are kept or removed.
 // hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
 // An unsuccessful parse will return an error.
-func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, hasShellCode bool, err error) {
+func Parse(str, sep string, keepBackSlash, keepSep, keepQuote bool) (env, argv []string, hasShellCode bool, err error) {
 	state := &parseState{
 		hasToken:       false,
 		escaped:        false,
@@ -87,6 +88,9 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 
 			if !state.inSingleQuotes {
 				state.inDoubleQuotes = !state.inDoubleQuotes
+				if keepQuote {
+					state.addToken(char)
+				}
 			} else {
 				state.addToken(char)
 			}
@@ -95,6 +99,9 @@ func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, ha
 
 			if !state.inDoubleQuotes {
 				state.inSingleQuotes = !state.inSingleQuotes
+				if keepQuote {
+					state.addToken(char)
+				}
 			} else {
 				state.addToken(char)
 			}
