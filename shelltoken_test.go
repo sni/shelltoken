@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestShellToken(t *testing.T) {
+func TestParseLinux(t *testing.T) {
 	tests := []struct {
 		in  string
 		res []string
@@ -46,7 +46,7 @@ func TestShellToken(t *testing.T) {
 	}
 }
 
-func TestShellEnv(t *testing.T) {
+func TestParseLinuxEnv(t *testing.T) {
 	tests := []struct {
 		in  string
 		env []string
@@ -76,7 +76,7 @@ func TestShellEnv(t *testing.T) {
 	}
 }
 
-func TestShellErrors(t *testing.T) {
+func TestParseLinuxErrors(t *testing.T) {
 	tests := []struct {
 		in  string
 		err string
@@ -94,7 +94,7 @@ func TestShellErrors(t *testing.T) {
 	}
 }
 
-func TestShellCharacters(t *testing.T) {
+func TestParseLinuxShellCharacters(t *testing.T) {
 	tests := []struct {
 		in    string
 		shell bool
@@ -114,23 +114,5 @@ func TestShellCharacters(t *testing.T) {
 		_, _, shell, err := shelltoken.ParseLinux(tst.in)
 		require.NoErrorf(t, err, "expected no error for %s", tst.in)
 		assert.Equalf(t, tst.shell, shell, "shell parser worked: %s -> %v", tst.in, tst.shell)
-	}
-}
-
-func BenchmarkParseShort(b *testing.B) {
-	tst := `"test" some more ' test test test 123'`
-	for n := 0; n < b.N; n++ {
-		shelltoken.ParseLinux(tst)
-	}
-}
-
-func BenchmarkParseLong(b *testing.B) {
-	tst := `"test" some more ' test test test 123'`
-	for x := 0; x < 10; x++ {
-		tst += tst
-	}
-
-	for n := 0; n < b.N; n++ {
-		shelltoken.ParseLinux(tst)
 	}
 }
