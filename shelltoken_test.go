@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseLinux(t *testing.T) {
+func TestSplitLinux(t *testing.T) {
 	tests := []struct {
 		in  string
 		res []string
@@ -38,14 +38,14 @@ func TestParseLinux(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.ParseLinux(tst.in)
+		env, argv, err := shelltoken.SplitLinux(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
 	}
 }
 
-func TestParseLinuxEnv(t *testing.T) {
+func TestSplitLinuxEnv(t *testing.T) {
 	tests := []struct {
 		in  string
 		env []string
@@ -68,14 +68,14 @@ func TestParseLinuxEnv(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.ParseLinux(tst.in)
+		env, argv, err := shelltoken.SplitLinux(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.arg, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Equalf(t, tst.env, env, "Tokenize env: %v -> %v", tst.in, env)
 	}
 }
 
-func TestParseLinuxErrors(t *testing.T) {
+func TestSplitLinuxErrors(t *testing.T) {
 	tests := []struct {
 		in  string
 		err string
@@ -85,7 +85,7 @@ func TestParseLinuxErrors(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.ParseLinux(tst.in)
+		env, argv, err := shelltoken.SplitLinux(tst.in)
 		require.Errorf(t, err, "expected error for %s: %s", tst.in, tst.err)
 		assert.Contains(t, err.Error(), tst.err)
 		assert.Nil(t, argv, "argv is nil")
@@ -93,7 +93,7 @@ func TestParseLinuxErrors(t *testing.T) {
 	}
 }
 
-func TestParseLinuxShellCharacters(t *testing.T) {
+func TestSplitLinuxShellCharacters(t *testing.T) {
 	tests := []struct {
 		in    string
 		shell bool
@@ -112,7 +112,7 @@ func TestParseLinuxShellCharacters(t *testing.T) {
 	shellError := &shelltoken.ShellCharactersFoundError{}
 
 	for _, tst := range tests {
-		_, _, err := shelltoken.ParseLinux(tst.in)
+		_, _, err := shelltoken.SplitLinux(tst.in)
 		if tst.shell {
 			assert.ErrorAsf(t, err, &shellError, "parse returned shell error: %s -> %v", tst.in, tst.shell)
 		} else {
@@ -121,24 +121,22 @@ func TestParseLinuxShellCharacters(t *testing.T) {
 	}
 }
 
-func TestParseLinuxIgnoreShell(t *testing.T) {
+func TestSplitIgnoreShell(t *testing.T) {
 	tests := []struct {
 		in  string
-		env []string
-		arg []string
+		res []string
 	}{
-		{`PATH=test:$PATH LD_LIB=... $(pwd)/test`, []string{"PATH=test:$PATH", "LD_LIB=..."}, []string{"$(pwd)/test"}},
+		{`PATH=test:$PATH LD_LIB=... $(pwd)/test`, []string{"PATH=test:$PATH", "LD_LIB=...", "$(pwd)/test"}},
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.Parse(tst.in, shelltoken.WHITESPACE, false, false, false, true)
+		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.WHITESPACE, false, false, false, true)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
-		assert.Equalf(t, tst.arg, argv, "Tokenize: %v -> %v", tst.in, argv)
-		assert.Equalf(t, tst.env, env, "Tokenize env: %v -> %v", tst.in, env)
+		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 	}
 }
 
-func TestParseWindows(t *testing.T) {
+func TestSplitWindows(t *testing.T) {
 	tests := []struct {
 		in  string
 		res []string
@@ -147,19 +145,19 @@ func TestParseWindows(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.ParseWindows(tst.in)
+		env, argv, err := shelltoken.SplitWindows(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
 	}
 }
 
-func TestParse(t *testing.T) {
+func TestSplitQuotes(t *testing.T) {
 	tests := []struct {
 		in  string
 		res []string
 	}{
-		{"", []string{""}},
+		{"", []string{}},
 		{" a", []string{" ", "a"}},
 		{"'test'", []string{"'test'"}},
 		{`'\test'`, []string{`'\test'`}},
@@ -167,14 +165,13 @@ func TestParse(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.Parse(tst.in, shelltoken.WHITESPACE, true, true, true, true)
+		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.WHITESPACE, true, true, true, true)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
-		assert.Emptyf(t, env, "no env")
 	}
 }
 
-func TestParseOther(t *testing.T) {
+func TestSplitQuotesAny(t *testing.T) {
 	tests := []struct {
 		in  string
 		res []string
@@ -183,9 +180,8 @@ func TestParseOther(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, err := shelltoken.Parse(tst.in, `;|`, true, true, true, true)
+		argv, err := shelltoken.SplitQuotes(tst.in, `;|`, true, true, true, true)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
-		assert.Emptyf(t, env, "no env")
 	}
 }

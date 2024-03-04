@@ -6,8 +6,8 @@ import (
 	"github.com/sni/shelltoken"
 )
 
-func ExampleParseLinux() {
-	env, argv, err := shelltoken.ParseLinux("PATH=/bin ls -l")
+func ExampleSplitLinux() {
+	env, argv, err := shelltoken.SplitLinux("PATH=/bin ls -l")
 	if err != nil {
 		panic("parse error: " + err.Error())
 	}
@@ -18,8 +18,8 @@ func ExampleParseLinux() {
 	// argv: []string{"ls", "-l"}
 }
 
-func ExampleParseWindows() {
-	env, argv, err := shelltoken.ParseWindows(`'C:\Program Files\Vim\vim90\vim.exe' -n test.txt`)
+func ExampleSplitWindows() {
+	env, argv, err := shelltoken.SplitWindows(`'C:\Program Files\Vim\vim90\vim.exe' -n test.txt`)
 	if err != nil {
 		panic("parse error: " + err.Error())
 	}

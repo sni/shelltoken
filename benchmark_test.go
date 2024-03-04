@@ -9,7 +9,7 @@ import (
 func BenchmarkParseShort(b *testing.B) {
 	tst := `"test" some more ' test test test 123'`
 	for n := 0; n < b.N; n++ {
-		shelltoken.ParseLinux(tst)
+		shelltoken.SplitLinux(tst)
 	}
 }
 
@@ -20,6 +20,6 @@ func BenchmarkParseLong(b *testing.B) {
 	}
 
 	for n := 0; n < b.N; n++ {
-		shelltoken.ParseLinux(tst)
+		shelltoken.SplitLinux(tst)
 	}
 }

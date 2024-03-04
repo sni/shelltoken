@@ -1,4 +1,4 @@
-// Package shelltoken implements a command line parser.
+// Package shelltoken implements a command line tokenizer.
 //
 // The shelltoken package splits a command line into token by whitespace
 // characters while honoring single and double quotes.
@@ -29,36 +29,75 @@ var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 
 const WHITESPACE = " \t\n\r"
 
-// ParseLinux splits a string the way the linux /bin/sh would do.
-// It uses
-// - separator: " \t\n\r".
-// - keep backslashes: false.
-// - keep quotes: false.
-// - keep separator: false.
-// returns error if shell characters were found.
-func ParseLinux(str string) (env, argv []string, err error) {
-	return Parse(strings.TrimSpace(str), WHITESPACE, false, false, false, false)
-}
-
-// ParseWindows splits a string the way windows would do.
-// It uses
-// - separator: " \t\n\r".
-// - keep backslashes: true.
-// - keep quotes: false.
-// - keep separator: false.
-// returns error if shell characters were found.
-func ParseWindows(str string) (env, argv []string, err error) {
-	return Parse(strings.TrimSpace(str), WHITESPACE, true, false, false, false)
-}
-
-// Parse parses command into list of envs and argv.
+// SplitLinux will tokenize a string the way the linux /bin/sh would do.
 // A successful parse will return the env list with
 // parsed environment variable definitions along with
 // the argv list. The argv list will always contain at
 // least one element (which can be empty).
 // The argv[0] contains the command and all following elements
 // are the arguments.
-// keepBackslash controls wether backslashes are kept or parsed.
+// It uses
+// - separator: " \t\n\r".
+// - keep backslashes: false.
+// - keep quotes: false.
+// - keep separator: false.
+// returns error if shell characters were found.
+func SplitLinux(str string) (env, argv []string, err error) {
+	argv, err = SplitQuotes(strings.TrimSpace(str), WHITESPACE, false, false, false, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(argv) == 0 {
+		argv = append(argv, "")
+	}
+
+	env, argv = ExtractEnvFromArgv(argv)
+
+	return env, argv, nil
+}
+
+// SplitWindows will tokenize a string the way windows would do.
+// A successful parse will return the env list with
+// parsed environment variable definitions along with
+// the argv list. The argv list will always contain at
+// least one element (which can be empty).
+// The argv[0] contains the command and all following elements
+// are the arguments.
+// It uses
+// - separator: " \t\n\r".
+// - keep backslashes: true.
+// - keep quotes: false.
+// - keep separator: false.
+// returns error if shell characters were found.
+func SplitWindows(str string) (env, argv []string, err error) {
+	argv, err = SplitQuotes(strings.TrimSpace(str), WHITESPACE, true, false, false, false)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if len(argv) == 0 {
+		argv = append(argv, "")
+	}
+
+	env, argv = ExtractEnvFromArgv(argv)
+
+	return env, argv, nil
+}
+
+// ExtractEnvFromArgv splits list of arguments into env and args.
+func ExtractEnvFromArgv(argv []string) (envs, args []string) {
+	for i := range argv {
+		if !strings.Contains(argv[i], "=") {
+			return argv[0:i], argv[i:]
+		}
+	}
+
+	return
+}
+
+// SplitQuotes will tokenize text into chunks honoring quotes.
+// keepBackslash controls wether backslashes are kept or removed.
 // - true: keep them (ex. useful for windows commands)
 // - false: (default) parse backslashes like the sh/bash shell
 // keepSep controls wether separators are kept or removed.
@@ -66,7 +105,8 @@ func ParseWindows(str string) (env, argv []string, err error) {
 // ignoreShellChars controls wether shell characters lead to a ShellCharactersFoundError
 // An unsuccessful parse will return an error. The error will be either
 // ErrUnbalancedQuotes or ShellCharactersFoundError.
-func Parse(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars bool) (env, argv []string, err error) {
+func SplitQuotes(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars bool) (argv []string, err error) {
+	argv = []string{}
 	state := &parseState{
 		hasToken:       false,
 		escaped:        false,
@@ -78,7 +118,7 @@ func Parse(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars 
 
 	for pos, char := range str {
 		if state.hasShellCode && !ignoreShellChars {
-			return nil, nil, &ShellCharactersFoundError{pos: pos}
+			return nil, &ShellCharactersFoundError{pos: pos}
 		}
 
 		switch {
@@ -149,24 +189,17 @@ func Parse(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars 
 		}
 	}
 
-	if !state.hasToken {
-		// append empty token if no token found so far
-		argv = append(argv, "")
-	} else {
-		// append last token
+	// append last token
+	if state.hasToken {
 		argv = append(argv, state.token.String())
 	}
 
 	switch {
-	case state.inSingleQuotes:
-		return nil, nil, ErrUnbalancedQuotes
-	case state.inDoubleQuotes:
-		return nil, nil, ErrUnbalancedQuotes
+	case state.inSingleQuotes, state.inDoubleQuotes:
+		return nil, ErrUnbalancedQuotes
+	default:
+		return argv, nil
 	}
-
-	env, argv = extractEnvFromArgv(argv)
-
-	return env, argv, nil
 }
 
 type parseState struct {
@@ -199,14 +232,4 @@ func (p *parseState) addToken(char rune) {
 	p.hasToken = true
 
 	p.token.WriteRune(char)
-}
-
-func extractEnvFromArgv(argv []string) (envs, args []string) {
-	for i := range argv {
-		if !strings.Contains(argv[i], "=") {
-			return argv[0:i], argv[i:]
-		}
-	}
-
-	return
 }

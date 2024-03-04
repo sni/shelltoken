@@ -26,29 +26,27 @@ import (
 	"github.com/sni/shelltoken"
 )
 
-func ExampleParseLinux() {
-	env, argv, hasShell, err := shelltoken.ParseLinux("PATH=/bin ls -l")
+func ExampleSplitLinux() {
+	env, argv, err := shelltoken.SplitLinux("PATH=/bin ls -l")
 	if err != nil {
 		panic("parse error: " + err.Error())
 	}
 
-	fmt.Printf("env:   %#v\nargv:  %#v\nshell: %#v\n", env, argv, hasShell)
+	fmt.Printf("env:  %#v\nargv: %#v\n", env, argv)
 	// Output:
-	// env:   []string{"PATH=/bin"}
-	// argv:  []string{"ls", "-l"}
-	// shell: false
+	// env:  []string{"PATH=/bin"}
+	// argv: []string{"ls", "-l"}
 }
 
-func ExampleParseWindows() {
-	env, argv, hasShell, err := shelltoken.ParseWindows(`'C:\Program Files\Vim\vim90\vim.exe' -n test.txt`)
+func ExampleSplitWindows() {
+	env, argv, err := shelltoken.SplitWindows(`'C:\Program Files\Vim\vim90\vim.exe' -n test.txt`)
 	if err != nil {
 		panic("parse error: " + err.Error())
 	}
 
-	fmt.Printf("env:   %#v\nargv:  %#v\nshell: %#v\n", env, argv, hasShell)
+	fmt.Printf("env:  %#v\nargv: %#v\n", env, argv)
 	// Output:
-	// env:   []string{}
-	// argv:  []string{"C:\\Program Files\\Vim\\vim90\\vim.exe", "-n", "test.txt"}
-	// shell: false
+	// env:  []string{}
+	// argv: []string{"C:\\Program Files\\Vim\\vim90\\vim.exe", "-n", "test.txt"}
 }
 ```
