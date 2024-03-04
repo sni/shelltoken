@@ -12,6 +12,28 @@ import (
 
 var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 
+// ParseLinux splits a string the way the linux /bin/sh would do.
+// It uses
+// - separator: " \t\n\r".
+// - keep backslashes: false.
+// - keep separator: false.
+func ParseLinux(str string) (env, argv []string, hasShellCode bool, err error) {
+	separator := " \t\n\r"
+
+	return Parse(str, separator, false, false)
+}
+
+// ParseWindows splits a string the way windows would do
+// It uses
+// - separator: " \t\n\r".
+// - keep backslashes: true.
+// - keep separator: false.
+func ParseWindows(str string) (env, argv []string, hasShellCode bool, err error) {
+	separator := " \t\n\r"
+
+	return Parse(str, separator, true, false)
+}
+
 // Parse parses command into list of envs and argv.
 // A successful parse will return the env list with
 // parsed environment variable definitions along with
@@ -19,19 +41,13 @@ var ErrUnbalancedQuotes = errors.New("unbalanced quotes")
 // least one element (which can be empty).
 // The argv[0] contains the command and all following elements
 // are the arguments.
-// keepBackslashes controls wether backslashes are kept or parsed.
+// keepBackslash controls wether backslashes are kept or parsed.
 // - true: keep them (ex. useful for windows commands)
 // - false: (default) parse backslashes like the sh/bash shell
+// keepSep controls wether separators are kept or removed.
 // hasShellCode is set to true if any shell special characters are found, ex.: sub shells like $(cmd)
 // An unsuccessful parse will return an error.
-func Parse(str string, keepBackslashes bool) (env, argv []string, hasShellCode bool, err error) {
-	separator := " \t\n\r"
-
-	return ParseSeparator(str, separator, keepBackslashes)
-}
-
-// ParseSeparator works like Parse but uses a custom separator.
-func ParseSeparator(str, separator string, keepBackslashes bool) (env, argv []string, hasShellCode bool, err error) {
+func Parse(str, sep string, keepBackSlash, keepSep bool) (env, argv []string, hasShellCode bool, err error) {
 	var token []rune
 
 	inSingleQuotes := false
@@ -70,7 +86,7 @@ func ParseSeparator(str, separator string, keepBackslashes bool) (env, argv []st
 			escaped = true
 
 			switch {
-			case keepBackslashes, inSingleQuotes:
+			case keepBackSlash, inSingleQuotes:
 				// backslashes are kept in single quotes
 				addToken(char)
 			case inDoubleQuotes:
@@ -107,9 +123,11 @@ func ParseSeparator(str, separator string, keepBackslashes bool) (env, argv []st
 			} else {
 				addToken(char)
 			}
-		case !escaped && strings.ContainsRune(separator, char):
+		case !escaped && strings.ContainsRune(sep, char):
 			switch {
 			case inSingleQuotes, inDoubleQuotes:
+				addToken(char)
+			case keepSep:
 				addToken(char)
 			case token != nil:
 				argv = append(argv, string(token))

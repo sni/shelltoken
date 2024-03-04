@@ -39,7 +39,7 @@ func TestShellToken(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, _, err := shelltoken.Parse(tst.in, false)
+		env, argv, _, err := shelltoken.ParseLinux(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
@@ -69,7 +69,7 @@ func TestShellEnv(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, _, err := shelltoken.Parse(tst.in, false)
+		env, argv, _, err := shelltoken.ParseLinux(tst.in)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.arg, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Equalf(t, tst.env, env, "Tokenize env: %v -> %v", tst.in, env)
@@ -86,7 +86,7 @@ func TestShellErrors(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		env, argv, _, err := shelltoken.Parse(tst.in, false)
+		env, argv, _, err := shelltoken.ParseLinux(tst.in)
 		require.Errorf(t, err, "expected error for %s: %s", tst.in, tst.err)
 		assert.Contains(t, err.Error(), tst.err)
 		assert.Nil(t, argv, "argv is nil")
@@ -111,7 +111,7 @@ func TestShellCharacters(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		_, _, shell, err := shelltoken.Parse(tst.in, false)
+		_, _, shell, err := shelltoken.ParseLinux(tst.in)
 		require.NoErrorf(t, err, "expected no error for %s", tst.in)
 		assert.Equalf(t, tst.shell, shell, "shell parser worked: %s -> %v", tst.in, tst.shell)
 	}
@@ -120,7 +120,7 @@ func TestShellCharacters(t *testing.T) {
 func BenchmarkParseShort(b *testing.B) {
 	tst := `"test" some more ' test test test 123'`
 	for n := 0; n < b.N; n++ {
-		shelltoken.Parse(tst, false)
+		shelltoken.ParseLinux(tst)
 	}
 }
 
@@ -131,6 +131,6 @@ func BenchmarkParseLong(b *testing.B) {
 	}
 
 	for n := 0; n < b.N; n++ {
-		shelltoken.Parse(tst, false)
+		shelltoken.ParseLinux(tst)
 	}
 }

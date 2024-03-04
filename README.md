@@ -27,7 +27,7 @@ import (
 )
 
 func Example() {
-	env, argv, _, err := shelltoken.Parse("PATH=/bin ls -l", false)
+	env, argv, _, err := shelltoken.ParseLinux("PATH=/bin ls -l")
 	if err != nil {
 		panic("parse error: " + err.Error())
 	}
