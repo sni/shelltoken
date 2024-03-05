@@ -28,9 +28,9 @@ func (e *UnbalancedQuotesError) Error() string {
 }
 
 const (
-	Whitespace                 = " \t\n\r"
-	SingleQuoteShellCharacters = "$`"
-	DoubleQuoteShellCharacters = "$`!&*()~[]|{};<>?"
+	Whitespace                  = " \t\n\r"
+	DoubleQuoteShellCharacters  = "$`"
+	OutsideQuoteShellCharacters = "$`!&*()~[]|{};<>?"
 )
 
 // SplitOption sets available parse options.
@@ -218,6 +218,11 @@ func SplitQuotes(str, sep string, options ...SplitOption) (argv []string, err er
 		}
 	}
 
+	// in case the last character was a shell char
+	if pst.stopShell && pst.firstShellPos != -1 {
+		return nil, &ShellCharactersFoundError{pos: pst.firstShellPos}
+	}
+
 	// append last token
 	if pst.hasToken {
 		argv = append(argv, pst.token.String())
@@ -290,21 +295,23 @@ func newParseState(options []SplitOption) *parseState {
 func (p *parseState) addToken(char rune, pos int) {
 	p.hasToken = true
 
+	// exit early if we do not search for shell characters (anymore)
 	switch {
-	case p.ignShell:
-	case p.inSingleQuotes:
+	case p.ignShell, p.inSingleQuotes, p.firstShellPos != -1:
+		p.token.WriteRune(char)
+
+		return
+	}
+
+	switch {
 	case p.inDoubleQuotes:
-		if strings.ContainsRune(SingleQuoteShellCharacters, char) {
-			if p.firstShellPos == -1 {
-				p.firstShellPos = pos
-			}
-		}
-	case strings.ContainsRune(DoubleQuoteShellCharacters, char):
-		if p.firstShellPos == -1 {
+		if strings.ContainsRune(DoubleQuoteShellCharacters, char) {
 			p.firstShellPos = pos
 		}
-	case !p.keepBackSlash:
-		if char == '\\' && p.firstShellPos == -1 {
+	case strings.ContainsRune(OutsideQuoteShellCharacters, char):
+		p.firstShellPos = pos
+	case char == '\\':
+		if !p.keepBackSlash && !p.ignBackslashes {
 			p.firstShellPos = pos
 		}
 	}

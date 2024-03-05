@@ -61,7 +61,7 @@ func TestSplitLinuxEnv(t *testing.T) {
 		{`PATH=test:PATH LD_LIB=... pwd/test`, []string{"PATH=test:PATH", "LD_LIB=..."}, []string{"pwd/test"}},
 		{"/python /tmp/file1 args1", []string{}, []string{"/python", "/tmp/file1", "args1"}},
 		{"lib/negate /bin/python3 /tmp/file1 args1", []string{}, []string{"lib/negate", "/bin/python3", "/tmp/file1", "args1"}},
-		{`ENV1="1 2 3" ENV2='2' ./test arg1 -P 'm1|m2';`, []string{"ENV1=1 2 3", "ENV2=2"}, []string{"./test", "arg1", "-P", "m1|m2;"}},
+		{`ENV1="1 2 3" ENV2='2' ./test arg1 -P 'm1|m2'`, []string{"ENV1=1 2 3", "ENV2=2"}, []string{"./test", "arg1", "-P", "m1|m2"}},
 	}
 
 	for _, tst := range tests {
@@ -103,6 +103,9 @@ func TestSplitLinuxShellCharacters(t *testing.T) {
 		{`test "test"$(ls)`, true},
 		{`test "test"$(ls)'test'`, true},
 		{"test 2>&1", true},
+		{"ls ~", true},
+		{"ls *.txt", true},
+		{"./test arg1 -P 'm1|m2';", true},
 		{"ENV='test' test 2>&1", true},
 	}
 
