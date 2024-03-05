@@ -21,6 +21,7 @@ issues:
     - "Function 'SplitQuotes' has too many statements"
     - "cognitive complexity .* of func `SplitQuotes` is high"
     - "calculated cyclomatic complexity for function SplitQuotes is .*, max is"
+    - "calculated cyclomatic complexity for function addToken is .*, max is"
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go

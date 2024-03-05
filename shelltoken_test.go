@@ -28,18 +28,15 @@ func TestSplitLinux(t *testing.T) {
 		{`\"`, []string{`"`}},
 		{`'"\a"'`, []string{`"\a"`}},
 		{`\ a`, []string{` a`}},
-		{`\\ a`, []string{`\`, `a`}},
-		{`\\\ a`, []string{`\ a`}},
-		{`\\\\ a`, []string{`\\`, `a`}},
 		{`"\\\\ a"`, []string{`\\ a`}},
 		{`'\\\\ a'`, []string{`\\\\ a`}},
 		{"/bin/sh -c 'echo a b c '", []string{"/bin/sh", "-c", "echo a b c "}},
 		{"cmd.exe /c '`foo`'", []string{"cmd.exe", "/c", "`foo`"}},
 	}
 
-	for _, tst := range tests {
+	for i, tst := range tests {
 		env, argv, err := shelltoken.SplitLinux(tst.in)
-		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
+		require.NoErrorf(t, err, "error while parsing tst %d: %s", i, tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 		assert.Emptyf(t, env, "no env")
 	}
@@ -127,10 +124,13 @@ func TestSplitIgnoreShell(t *testing.T) {
 		res []string
 	}{
 		{`PATH=test:$PATH LD_LIB=... $(pwd)/test`, []string{"PATH=test:$PATH", "LD_LIB=...", "$(pwd)/test"}},
+		{`\\ a`, []string{`\`, `a`}},
+		{`\\\ a`, []string{`\ a`}},
+		{`\\\\ a`, []string{`\\`, `a`}},
 	}
 
 	for _, tst := range tests {
-		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.WHITESPACE, false, false, false, true)
+		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.Whitespace)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 	}
@@ -142,6 +142,8 @@ func TestSplitWindows(t *testing.T) {
 		res []string
 	}{
 		{`c:\"Program Files"\/crap\bs.exe`, []string{`c:\Program Files\/crap\bs.exe`}},
+		{`Write-Host "\test"`, []string{`Write-Host`, `\test`}},
+		{`Write-Host \\test`, []string{`Write-Host`, `\\test`}},
 	}
 
 	for _, tst := range tests {
@@ -165,7 +167,7 @@ func TestSplitQuotes(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.WHITESPACE, true, true, true, true)
+		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.Whitespace, shelltoken.SplitKeepBackslashes|shelltoken.SplitKeepQuotes|shelltoken.SplitKeepSeparator)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 	}
@@ -180,7 +182,7 @@ func TestSplitQuotesAny(t *testing.T) {
 	}
 
 	for _, tst := range tests {
-		argv, err := shelltoken.SplitQuotes(tst.in, `;|`, true, true, true, true)
+		argv, err := shelltoken.SplitQuotes(tst.in, `;|`, shelltoken.SplitKeepBackslashes|shelltoken.SplitKeepQuotes|shelltoken.SplitKeepSeparator)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 	}

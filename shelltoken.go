@@ -3,6 +3,9 @@
 // The shelltoken package splits a command line into token by whitespace
 // characters while honoring single and double quotes.
 // Backslashes and escaped quotes are supported as well.
+// Whitespace is defined as " \t\n\r"
+// Shell-characters within single quotes are "$`"
+// Shell-characters within double quotes are "$`!&*()~[]|\{};<>?"
 package shelltoken
 
 import (
@@ -24,7 +27,40 @@ func (e *UnbalancedQuotesError) Error() string {
 	return "unbalanced quotes"
 }
 
-const WHITESPACE = " \t\n\r"
+const (
+	Whitespace                 = " \t\n\r"
+	SingleQuoteShellCharacters = "$`"
+	DoubleQuoteShellCharacters = "$`!&*()~[]|{};<>?"
+)
+
+// SplitOption sets available parse options.
+type SplitOption uint8
+
+const (
+	// SplitNoOptions is the zero value for options.
+	SplitNoOptions SplitOption = 0
+
+	// SplitKeepBackslashes: Do not remove backslashes.
+	SplitKeepBackslashes SplitOption = 1 << iota
+
+	// SplitIgnoreBackslashes does not escape characters by backslash.
+	SplitIgnoreBackslashes
+
+	// SplitKeepQuotes: Keep quotes in the final argv list.
+	SplitKeepQuotes
+
+	// SplitKeepSeparator: do not remove the split characters. They end up as a separate element in the argv list.
+	SplitKeepSeparator
+
+	// SplitStopOnShellCharacters cancels parsing upon the first shell character and returns ShellCharactersFoundError.
+	SplitStopOnShellCharacters
+
+	// SplitContinueOnShellCharacters returns ShellCharactersFoundError on shell characters but will parse to the end.
+	SplitContinueOnShellCharacters
+
+	// SplitIgnoreShellCharacters will ignore shell characters.
+	SplitIgnoreShellCharacters
+)
 
 // SplitLinux will tokenize a string the way the linux /bin/sh would do.
 // A successful parse will return the env list with
@@ -40,7 +76,7 @@ const WHITESPACE = " \t\n\r"
 // - keep separator: false.
 // returns error if shell characters were found.
 func SplitLinux(str string) (env, argv []string, err error) {
-	argv, err = SplitQuotes(strings.TrimSpace(str), WHITESPACE, false, false, false, false)
+	argv, err = SplitQuotes(strings.TrimSpace(str), Whitespace, SplitStopOnShellCharacters)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -68,7 +104,9 @@ func SplitLinux(str string) (env, argv []string, err error) {
 // - keep separator: false.
 // returns error if shell characters were found.
 func SplitWindows(str string) (env, argv []string, err error) {
-	argv, err = SplitQuotes(strings.TrimSpace(str), WHITESPACE, true, false, false, false)
+	windowsOptions := SplitKeepBackslashes | SplitIgnoreBackslashes | SplitStopOnShellCharacters
+
+	argv, err = SplitQuotes(strings.TrimSpace(str), Whitespace, windowsOptions)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -94,39 +132,33 @@ func ExtractEnvFromArgv(argv []string) (envs, args []string) {
 }
 
 // SplitQuotes will tokenize text into chunks honoring quotes.
-// keepBackslash controls wether backslashes are kept or removed.
-// - true: keep them (ex. useful for windows commands)
-// - false: (default) parse backslashes like the sh/bash shell
-// keepSep controls wether separators are kept or removed.
-// keepQuote controls wether quotes are kept or removed
-// ignoreShellChars controls wether shell characters lead to a ShellCharactersFoundError
+// Options are a list of SplitOption(s) or a bitmask of SplitOption(s)
 // An unsuccessful parse will return an error. The error will be either
 // UnbalancedQuotesError or ShellCharactersFoundError.
-func SplitQuotes(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShellChars bool) (argv []string, err error) {
+func SplitQuotes(str, sep string, options ...SplitOption) (argv []string, err error) {
+	pst := newParseState(options)
 	argv = []string{}
-	state := &parseState{
-		hasToken:       false,
-		escaped:        false,
-		hasShellCode:   false,
-		inSingleQuotes: false,
-		inDoubleQuotes: false,
-		token:          strings.Builder{},
-	}
 
 	for pos, char := range str {
-		if state.hasShellCode && !ignoreShellChars {
-			return nil, &ShellCharactersFoundError{pos: pos}
+		if pst.stopShell && pst.firstShellPos != -1 {
+			return nil, &ShellCharactersFoundError{pos: pst.firstShellPos}
 		}
 
 		switch {
-		case !state.escaped && char == '\\':
-			state.escaped = true
+		case pst.escaped:
+			// reset escaped flag
+			pst.escaped = false
+			pst.addToken(char, pos)
+		case char == '\\':
+			if !pst.ignBackslashes {
+				pst.escaped = true
+			}
 
 			switch {
-			case keepBackSlash, state.inSingleQuotes:
+			case pst.keepBackSlash, pst.inSingleQuotes:
 				// backslashes are kept in single quotes
-				state.addToken(char)
-			case state.inDoubleQuotes:
+				pst.addToken(char, pos)
+			case pst.inDoubleQuotes:
 				// or in double quotes except...
 				if len(str) > pos {
 					switch str[pos+1] {
@@ -135,98 +167,147 @@ func SplitQuotes(str, sep string, keepBackSlash, keepSep, keepQuote, ignoreShell
 					// or a backslash
 					case '\\':
 					default:
-						state.addToken(char)
+						pst.addToken(char, pos)
 					}
 				}
 			}
 
-		case !state.escaped && char == '"':
-			state.hasToken = true
+		case char == '"':
+			pst.hasToken = true
 
-			if !state.inSingleQuotes {
-				state.inDoubleQuotes = !state.inDoubleQuotes
-				if keepQuote {
-					state.addToken(char)
+			if !pst.inSingleQuotes {
+				pst.inDoubleQuotes = !pst.inDoubleQuotes
+				if pst.keepQuote {
+					pst.addToken(char, pos)
 				}
 			} else {
-				state.addToken(char)
+				pst.addToken(char, pos)
 			}
-		case !state.escaped && char == '\'':
-			state.hasToken = true
+		case char == '\'':
+			pst.hasToken = true
 
-			if !state.inDoubleQuotes {
-				state.inSingleQuotes = !state.inSingleQuotes
-				if keepQuote {
-					state.addToken(char)
+			if !pst.inDoubleQuotes {
+				pst.inSingleQuotes = !pst.inSingleQuotes
+				if pst.keepQuote {
+					pst.addToken(char, pos)
 				}
 			} else {
-				state.addToken(char)
+				pst.addToken(char, pos)
 			}
-		case !state.escaped && strings.ContainsRune(sep, char):
+		case strings.ContainsRune(sep, char):
 			switch {
-			case state.inSingleQuotes, state.inDoubleQuotes:
-				state.addToken(char)
-			case keepSep:
-				if state.hasToken {
-					argv = append(argv, state.token.String())
-					state.token.Reset()
+			case pst.inSingleQuotes, pst.inDoubleQuotes:
+				pst.addToken(char, pos)
+			case pst.keepSep:
+				if pst.hasToken {
+					argv = append(argv, pst.token.String())
+					pst.token.Reset()
 
-					state.hasToken = false
+					pst.hasToken = false
 				}
 
 				argv = append(argv, string(char))
-			case state.hasToken:
-				argv = append(argv, state.token.String())
-				state.token.Reset()
+			case pst.hasToken:
+				argv = append(argv, pst.token.String())
+				pst.token.Reset()
 
-				state.hasToken = false
+				pst.hasToken = false
 			}
 		default:
-			state.addToken(char)
+			pst.addToken(char, pos)
 		}
 	}
 
 	// append last token
-	if state.hasToken {
-		argv = append(argv, state.token.String())
+	if pst.hasToken {
+		argv = append(argv, pst.token.String())
 	}
 
 	switch {
-	case state.inSingleQuotes, state.inDoubleQuotes:
+	case pst.inSingleQuotes, pst.inDoubleQuotes:
 		return nil, &UnbalancedQuotesError{}
+	case pst.contShell && pst.firstShellPos != -1:
+		return argv, &ShellCharactersFoundError{pos: pst.firstShellPos}
 	default:
 		return argv, nil
 	}
 }
 
 type parseState struct {
+	// current state flags
 	hasToken       bool
 	escaped        bool
-	hasShellCode   bool
 	inSingleQuotes bool
 	inDoubleQuotes bool
+	firstShellPos  int // position of first shell character found
 	token          strings.Builder
+	// parse flags
+	keepBackSlash  bool
+	keepQuote      bool
+	keepSep        bool
+	stopShell      bool
+	contShell      bool
+	ignShell       bool
+	ignBackslashes bool
 }
 
-func (p *parseState) addToken(char rune) {
-	// reset escaped flag
-	p.escaped = false
+func newParseState(options []SplitOption) *parseState {
+	pst := &parseState{
+		hasToken:       false,
+		escaped:        false,
+		inSingleQuotes: false,
+		inDoubleQuotes: false,
+		token:          strings.Builder{},
+		firstShellPos:  -1,
+		keepBackSlash:  false,
+		keepQuote:      false,
+		keepSep:        false,
+		stopShell:      false,
+		contShell:      false,
+		ignShell:       false,
+		ignBackslashes: false,
+	}
 
-	switch {
-	case p.inSingleQuotes:
-	case p.inDoubleQuotes:
-		switch char {
-		case '$', '`':
-			p.hasShellCode = true
-		}
-	default:
-		switch char {
-		case '$', '`', '!', '&', '*', '(', ')', '~', '[', ']', '|', '{', '}', ';', '<', '>', '?':
-			p.hasShellCode = true
+	option := SplitNoOptions
+	for _, o := range options {
+		option |= o
+		if o == SplitNoOptions {
+			option = SplitNoOptions
 		}
 	}
 
+	pst.keepBackSlash = option&SplitKeepBackslashes > 0
+	pst.keepQuote = option&SplitKeepQuotes > 0
+	pst.keepSep = option&SplitKeepSeparator > 0
+	pst.stopShell = option&SplitStopOnShellCharacters > 0
+	pst.contShell = option&SplitContinueOnShellCharacters > 0
+	pst.ignBackslashes = option&SplitIgnoreBackslashes > 0
+	pst.ignShell = (!pst.stopShell && !pst.contShell) || option&SplitIgnoreShellCharacters > 0
+
+	return pst
+}
+
+func (p *parseState) addToken(char rune, pos int) {
 	p.hasToken = true
+
+	switch {
+	case p.ignShell:
+	case p.inSingleQuotes:
+	case p.inDoubleQuotes:
+		if strings.ContainsRune(SingleQuoteShellCharacters, char) {
+			if p.firstShellPos == -1 {
+				p.firstShellPos = pos
+			}
+		}
+	case strings.ContainsRune(DoubleQuoteShellCharacters, char):
+		if p.firstShellPos == -1 {
+			p.firstShellPos = pos
+		}
+	case !p.keepBackSlash:
+		if char == '\\' && p.firstShellPos == -1 {
+			p.firstShellPos = pos
+		}
+	}
 
 	p.token.WriteRune(char)
 }
