@@ -6,6 +6,7 @@ GOVERSION:=$(shell \
     go version | \
     awk -F'go| ' '{ split($$5, a, /\./); printf ("%04d%04d", a[1], a[2]); exit; }' \
 )
+# also update README.md and .github/workflows/citest.yml when changing minumum version
 MINGOVERSION:=00010021
 MINGOVERSIONSTR:=1.21
 # see https://github.com/go-modules-by-example/index/blob/master/010_tools/README.md
@@ -61,7 +62,7 @@ test: vendor
 testf: vendor
 	$(GO) test -v . -run "$(filter-out $@,$(MAKECMDGOALS))" 2>&1 | grep -v "no test files" | grep -v "no tests to run" | grep -v "^PASS"
 
-citest: vendor
+citest: tools vendor
 	#
 	# Checking gofmt errors
 	#
@@ -112,10 +113,8 @@ coverweb:
 	$(GO) tool cover -html=cover.out
 
 clean:
-	rm -rf \
-		vendor \
-		tools \
-		cover.out \
+	rm -rf vendor
+	rm -rf $(TOOLSFOLDER)
 
 GOVET=$(GO) vet -all
 fmt: tools

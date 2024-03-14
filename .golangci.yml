@@ -13,9 +13,20 @@ linters:
     - depguard
     - nonamedreturns
     - paralleltest
+    # deprecated
+    - deadcode
+    - ifshort
     - interfacer
+    - exhaustivestruct
+    - maligned
+    - structcheck
+    - varcheck
+    - scopelint
+    - nosnakecase
+    - golint
 issues:
   max-same-issues: 0
+  max-issues-per-linter: 0
   exclude-use-default: true
   exclude:
     - "Function 'SplitQuotes' has too many statements"
