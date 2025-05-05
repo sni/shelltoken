@@ -239,13 +239,14 @@ func SplitQuotes(str, sep string, options ...SplitOption) (argv []string, err er
 }
 
 type parseState struct {
+	token strings.Builder
+
 	// current state flags
 	hasToken       bool
 	escaped        bool
 	inSingleQuotes bool
 	inDoubleQuotes bool
 	firstShellPos  int // position of first shell character found
-	token          strings.Builder
 	// parse flags
 	keepBackSlash  bool
 	keepQuote      bool
