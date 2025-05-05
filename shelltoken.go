@@ -60,6 +60,9 @@ const (
 
 	// SplitIgnoreShellCharacters will ignore shell characters.
 	SplitIgnoreShellCharacters
+
+	// SplitKeepAndIgnoreAll just splits but keeps all characters.
+	SplitKeepAll = SplitKeepQuotes | SplitKeepBackslashes | SplitKeepSeparator | SplitIgnoreShellCharacters
 )
 
 // SplitLinux will tokenize a string the way the linux /bin/sh would do.

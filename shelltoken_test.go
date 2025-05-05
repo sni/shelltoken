@@ -32,6 +32,7 @@ func TestSplitLinux(t *testing.T) {
 		{`'\\\\ a'`, []string{`\\\\ a`}},
 		{"/bin/sh -c 'echo a b c '", []string{"/bin/sh", "-c", "echo a b c "}},
 		{"cmd.exe /c '`foo`'", []string{"cmd.exe", "/c", "`foo`"}},
+		{"", []string{""}},
 	}
 
 	for i, tst := range tests {
@@ -130,10 +131,26 @@ func TestSplitIgnoreShell(t *testing.T) {
 		{`\\ a`, []string{`\`, `a`}},
 		{`\\\ a`, []string{`\ a`}},
 		{`\\\\ a`, []string{`\\`, `a`}},
+		{`test test`, []string{`test`, `test`}},
 	}
 
 	for _, tst := range tests {
 		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.Whitespace)
+		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
+		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
+	}
+}
+
+func TestSplitKeepAll(t *testing.T) {
+	tests := []struct {
+		in  string
+		res []string
+	}{
+		{`test test`, []string{`test`, ` `, `test`}},
+	}
+
+	for _, tst := range tests {
+		argv, err := shelltoken.SplitQuotes(tst.in, shelltoken.Whitespace, shelltoken.SplitKeepAll)
 		require.NoErrorf(t, err, "error while parsing: %s", tst.in)
 		assert.Equalf(t, tst.res, argv, "Tokenize: %v -> %v", tst.in, argv)
 	}
