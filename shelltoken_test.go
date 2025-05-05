@@ -147,6 +147,10 @@ func TestSplitKeepAll(t *testing.T) {
 		res []string
 	}{
 		{`test test`, []string{`test`, ` `, `test`}},
+		{`"test test"`, []string{`"test test"`}},
+		{`'test test'`, []string{`'test test'`}},
+		{`"test ' test"`, []string{`"test ' test"`}},
+		{`'test " test'`, []string{`'test " test'`}},
 	}
 
 	for _, tst := range tests {
