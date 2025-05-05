@@ -5,7 +5,7 @@ linters-settings:
       - style
       - experimental
   govet:
-    check-shadowing: true
+    enable-all: true
 linters:
   enable-all: true
   fast: false
@@ -14,16 +14,7 @@ linters:
     - nonamedreturns
     - paralleltest
     # deprecated
-    - deadcode
-    - ifshort
-    - interfacer
-    - exhaustivestruct
-    - maligned
-    - structcheck
-    - varcheck
-    - scopelint
-    - nosnakecase
-    - golint
+    - tenv
 issues:
   max-same-issues: 0
   max-issues-per-linter: 0
