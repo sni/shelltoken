@@ -131,7 +131,7 @@ func ExtractEnvFromArgv(argv []string) (envs, args []string) {
 		}
 	}
 
-	return
+	return envs, args
 }
 
 // SplitQuotes will tokenize text into chunks honoring quotes.
